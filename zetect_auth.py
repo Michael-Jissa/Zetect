@@ -1,30 +1,52 @@
-import msal, requests, sys
+# zetect_auth.py
+import msal
+import os
+import json
 
 CLIENT_ID = "0c60d083-5388-427f-85ce-de767ac8b818"
 AUTHORITY = "https://login.microsoftonline.com/common"
-SCOPES = ["User.Read", "Mail.Read"]
+SCOPES = ["Mail.Read"]
 
-def main():
-    app = msal.PublicClientApplication(client_id=CLIENT_ID, authority=AUTHORITY)
+CACHE_FILE = "token_cache.bin"
 
-    flow = app.initiate_device_flow(scopes=SCOPES)
-    if "user_code" not in flow:
-        print("Failed to create device flow:", flow)
-        sys.exit(1)
+def load_cache():
+    cache = msal.SerializableTokenCache()
+    if os.path.exists(CACHE_FILE):
+        with open(CACHE_FILE, "r") as f:
+            cache.deserialize(f.read())
+    return cache
 
-    print(flow["message"])
-    result = app.acquire_token_by_device_flow(flow)
+def save_cache(cache):
+    if cache.has_state_changed:
+        with open(CACHE_FILE, "w") as f:
+            f.write(cache.serialize())
+
+def get_token():
+    cache = load_cache()
+    app = msal.PublicClientApplication(
+        CLIENT_ID, authority=AUTHORITY, token_cache=cache
+    )
+
+    accounts = app.get_accounts()
+    result = None
+    if accounts:
+        result = app.acquire_token_silent(SCOPES, account=accounts[0])
+
+    if not result:
+        flow = app.initiate_device_flow(scopes=SCOPES)
+        if "user_code" not in flow:
+            raise ValueError(f"Device flow creation failed: {json.dumps(flow, indent=2)}")
+        print(flow["message"])
+        result = app.acquire_token_by_device_flow(flow)
+
+    save_cache(cache)
 
     if "access_token" in result:
-        print("✅ Signed in.")
-        
-        r = requests.get(
-            "https://graph.microsoft.com/v1.0/me",
-            headers={"Authorization": f"Bearer {result['access_token']}"}
-        )
-        print("Me:", r.json())
+        print("Auth OK. Scopes:", result.get("scope", "(no scopes in token)"))
+        return result["access_token"]
     else:
-        print("❌ Auth failed:", result.get("error"), result.get("error_description"))
+        raise RuntimeError(f"Token acquisition failed: {result}")
 
 if __name__ == "__main__":
-    main()
+    token = get_token()
+    print("Access token acquired.")
