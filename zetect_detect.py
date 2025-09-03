@@ -25,7 +25,7 @@ URGENCY_PHRASES = {
     "payment required", "your mailbox is full"
 }
 
-# --- OpenAI setup ---
+# OpenAI setup
 load_dotenv("zetect.env")  # load your API key from local file
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key) if api_key else None
@@ -190,3 +190,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
