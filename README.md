@@ -30,7 +30,7 @@ It connects to your Outlook inbox, fetches emails, and uses GPT to classify or c
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/Zetect.git
+git clone https://github.com/Michael-Jissa/Zetect.git
 cd Zetect
 ```
 
